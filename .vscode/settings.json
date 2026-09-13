@@ -1,4 +1,5 @@
 {
+  "jest.jestCommandLine": "npm test --",
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true
 }
