@@ -22,7 +22,7 @@ export class BookingController {
 
       const dto: CreateBookingDTO = {
         propertyId: req.body.propertyId,
-        guestId: req.body.userId,
+        guestId: req.body.guestId,
         startDate: startDate,
         endDate: endDate,
         guestCount: req.body.guestCount,
@@ -50,7 +50,10 @@ export class BookingController {
     }
   }
 
-  async cancelBooking(req: Request, res: Response): Promise<Response> {
+  async cancelBooking(
+    req: Request<{ id: string }>,
+    res: Response
+  ): Promise<Response> {
     try {
       const bookingId = req.params.id;
       await this.bookingService.cancelBooking(bookingId);
