@@ -18,7 +18,7 @@ export class UserService {
       uuidv4(),
       dto.name
     );
-    this.userRepository.save(user);
+    await this.userRepository.save(user);
     return user;
   }
 }

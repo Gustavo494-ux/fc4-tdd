@@ -3,6 +3,7 @@ import { Property } from "../../../domain/entities/property";
 import { User } from "../../../domain/entities/user";
 import { DateRange } from "../../../domain/value_objects/date_range";
 import { BookingEntity } from "../entities/booking_entity";
+import { PropertyEntity } from "../entities/property_entity";
 import { UserEntity } from "../entities/user_entity";
 import { BookingMapper } from "./booking_mapper";
 
@@ -13,13 +14,12 @@ describe("BookingMapper", () => {
             new Date("2026-02-04"),
         );
 
-        const property = new Property(
-            "id",
-            "Casa de praia",
-            "Casa top",
-            5,
-            120,
-        );
+        const propertyEntity = new PropertyEntity();
+        propertyEntity.id = "property-id";
+        propertyEntity.name = "Casa de praia";
+        propertyEntity.description = "Casa top";
+        propertyEntity.maxGuests = 5;
+        propertyEntity.basePricePerNight = 120;
 
         const guestEntity = new UserEntity();
         guestEntity.id = "2";
@@ -27,6 +27,7 @@ describe("BookingMapper", () => {
 
         const bookingEntity = new BookingEntity();
         bookingEntity.id = "1";
+        bookingEntity.property = propertyEntity;
         bookingEntity.guest = guestEntity;
         bookingEntity.startDate = dateRange.getStartDate();
         bookingEntity.endDate = dateRange.getEndDate();
@@ -34,16 +35,26 @@ describe("BookingMapper", () => {
         bookingEntity.status = "CONFIRMED";
         bookingEntity.totalPrice = 1050;
 
-        const booking = BookingMapper.toDomain(
-            bookingEntity,
-            property,
-        );
+        const booking = BookingMapper.toDomain(bookingEntity);
 
-        expect(booking?.getId()).toBe("1");
-        expect(booking?.getGuestCount()).toBe(4);
-        expect(booking?.getProperty()).toBe(property);
-        expect(booking?.getStatus()).toBe("CONFIRMED");
-        expect(booking?.getTotalPrice()).toBe(1050);
+        expect(booking).toBeInstanceOf(Booking);
+        expect(booking.getId()).toBe("1");
+        expect(booking.getGuest().getId()).toBe("2");
+        expect(booking.getGuest().getName()).toBe("Usuário teste");
+        expect(booking.getDateRange().getStartDate()).toEqual(
+            dateRange.getStartDate(),
+        );
+        expect(booking.getDateRange().getEndDate()).toEqual(
+            dateRange.getEndDate(),
+        );
+        expect(booking.getGuestCount()).toBe(4);
+        expect(booking.getProperty().getId()).toBe("property-id");
+        expect(booking.getProperty().getName()).toBe("Casa de praia");
+        expect(booking.getProperty().getDescription()).toBe("Casa top");
+        expect(booking.getProperty().getMaxGuests()).toBe(5);
+        expect(booking.getProperty().getBasePricePerNight()).toBe(120);
+        expect(booking.getStatus()).toBe("CONFIRMED");
+        expect(booking.getTotalPrice()).toBe(1050);
     });
 
     it("deve lançar erro de validação ao faltar campos obrigatórios no BookingEntity", () => {
@@ -57,40 +68,18 @@ describe("BookingMapper", () => {
 
         const guestEntity = new UserEntity();
         guestEntity.id = "2";
-        guestEntity.name = "Usuário teste";
 
         const bookingEntity = new BookingEntity();
+        bookingEntity.id = "1";
         bookingEntity.guest = guestEntity;
-
-        expect(() =>
-            BookingMapper.toDomain(bookingEntity, property),
-        ).toThrow(
-            new Error(
-                "A data de início e término não podem ser iguais.",
-            ),
-        );
-
-        bookingEntity.startDate = new Date("2026-01-04");
-        bookingEntity.endDate = new Date("2026-01-03");
-
-        expect(() =>
-            BookingMapper.toDomain(bookingEntity, property),
-        ).toThrow(
-            new Error(
-                "A data de término deve ser posterior à data de início.",
-            ),
-        );
-
-        bookingEntity.guestCount = -1;
         bookingEntity.startDate = new Date("2026-01-01");
         bookingEntity.endDate = new Date("2026-01-03");
+        bookingEntity.guestCount = 2;
 
         expect(() =>
             BookingMapper.toDomain(bookingEntity, property),
         ).toThrow(
-            new Error(
-                "O número de hóspedes deve ser maior que zero.",
-            ),
+            new Error("O nome é obrigatório"),
         );
     });
 
@@ -125,10 +114,16 @@ describe("BookingMapper", () => {
 
         expect(bookingEntity?.id).toBe("1");
         expect(bookingEntity?.property?.id).toBe("2");
+        expect(bookingEntity?.property?.name).toBe("Apartamento");
+        expect(bookingEntity?.property?.description).toBe("Apartamento TOP");
+        expect(bookingEntity?.property?.maxGuests).toBe(3);
+        expect(bookingEntity?.property?.basePricePerNight).toBe(122);
         expect(bookingEntity?.guest?.id).toBe("3");
+        expect(bookingEntity?.guest?.name).toBe("Usuário Teste");
         expect(bookingEntity?.startDate).toBe(dateRange.getStartDate());
         expect(bookingEntity?.endDate).toBe(dateRange.getEndDate());
         expect(bookingEntity?.guestCount).toBe(2);
         expect(bookingEntity?.totalPrice).toBe(244);
+        expect(bookingEntity?.status).toBe("CONFIRMED");
     });
 });

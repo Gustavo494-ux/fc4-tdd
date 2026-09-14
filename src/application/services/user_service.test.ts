@@ -40,4 +40,13 @@ describe("UserService", () => {
     const usuarioSalvo = await userService.createUser(dto);
     expect(usuarioSalvo?.getName()).toBe("Usuário teste");
   })
+
+  it("deve aguardar e propagar erros ao salvar um usuário", async () => {
+    const saveError = new Error("Erro ao salvar usuário");
+    jest.spyOn(fakeUserRepository, "save").mockRejectedValue(saveError);
+
+    await expect(
+      userService.createUser({ name: "Usuário teste" })
+    ).rejects.toThrow(saveError);
+  });
 });

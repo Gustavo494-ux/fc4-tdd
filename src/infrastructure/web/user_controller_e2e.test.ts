@@ -45,7 +45,7 @@ describe("UserController", () => {
     beforeAll(async () => {
         const userRepo = dataSource.getRepository(UserEntity);
 
-        userRepo.clear();
+        await userRepo.clear();
     })
 
     it("deve criar um usuário com sucesso", async() => {
