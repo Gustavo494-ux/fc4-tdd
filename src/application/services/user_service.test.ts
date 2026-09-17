@@ -35,11 +35,19 @@ describe("UserService", () => {
 
   it("deve salvar um usuário com sucesso e retornar o usuário usando o repositorio fake", async () => {
     const dto: CreateUserDTO = {
-      name:"Usuário teste"
-    }
+      name: "Usuário teste",
+    };
     const usuarioSalvo = await userService.createUser(dto);
     expect(usuarioSalvo?.getName()).toBe("Usuário teste");
-  })
+  });
+
+  it("deve remover espaços no início e no fim do nome", async () => {
+    const usuarioSalvo = await userService.createUser({
+      name: "  Usuário teste  ",
+    });
+
+    expect(usuarioSalvo.getName()).toBe("Usuário teste");
+  });
 
   it("deve aguardar e propagar erros ao salvar um usuário", async () => {
     const saveError = new Error("Erro ao salvar usuário");
@@ -48,5 +56,41 @@ describe("UserService", () => {
     await expect(
       userService.createUser({ name: "Usuário teste" })
     ).rejects.toThrow(saveError);
+  });
+
+  it("deve lançar uma exceção se o nome do usuário for vazio", async () => {
+    const saveSpy = jest.spyOn(fakeUserRepository, "save");
+
+    await expect(userService.createUser({ name: "" })).rejects.toThrow(
+      "O campo nome é obrigatório."
+    );
+    expect(saveSpy).not.toHaveBeenCalled();
+  });
+
+  it("deve lançar uma exceção se o nome do usuário não for informado", async () => {
+    const saveSpy = jest.spyOn(fakeUserRepository, "save");
+
+    await expect(userService.createUser({} as CreateUserDTO)).rejects.toThrow(
+      "O campo nome é obrigatório."
+    );
+    expect(saveSpy).not.toHaveBeenCalled();
+  });
+
+  it("deve lançar uma exceção se o nome possuir apenas espaços", async () => {
+    const saveSpy = jest.spyOn(fakeUserRepository, "save");
+
+    await expect(userService.createUser({ name: "   " })).rejects.toThrow(
+      "O campo nome é obrigatório."
+    );
+    expect(saveSpy).not.toHaveBeenCalled();
+  });
+
+  it("deve lançar uma exceção se o nome não for uma string", async () => {
+    const saveSpy = jest.spyOn(fakeUserRepository, "save");
+
+    await expect(
+      userService.createUser({ name: 123 } as unknown as CreateUserDTO)
+    ).rejects.toThrow("O campo nome é obrigatório.");
+    expect(saveSpy).not.toHaveBeenCalled();
   });
 });
