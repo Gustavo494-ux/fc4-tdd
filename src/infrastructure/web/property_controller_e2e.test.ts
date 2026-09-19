@@ -34,7 +34,7 @@ beforeAll(async () => {
     propertyService = new PropertyService(propertyRepository);
     propertyController = new PropertyController(propertyService);
 
-    app.post("/propertys", (req, res, next) => {
+    app.post("/properties", (req, res, next) => {
         propertyController.createProperty(req,res).catch(err => next(err))
     })
 })
@@ -45,7 +45,7 @@ afterAll(async () => {
 
 describe("PropertyController", () => {
     it("deve criar uma propriedade com sucesso", async () => {
-        const response = await request(app).post("/propertys").send({
+        const response = await request(app).post("/properties").send({
             name:"Nome Teste",
             description: "Descrição teste",
             maxGuests:3,
@@ -71,10 +71,12 @@ describe("PropertyController", () => {
         const propertyBanco = await propertyRepository.findById(response.body.property.id);
         expect(propertyBanco).toHaveProperty("id");
         expect(propertyBanco?.getId()).toBe(response.body.property.id);
+        expect(propertyBanco?.getName()).toBe("Nome Teste");
+        expect(propertyBanco?.getBasePricePerNight()).toBe(120.0);
     });
 
     it("deve retornar erro com código 400 e mensagem 'O nome da propriedade é obrigatório.' ao enviar um nome vazio", async () => {
-        const response = await request(app).post("/propertys").send({
+        const response = await request(app).post("/properties").send({
             name:"",
             description: "Descrição teste",
             maxGuests:3,
@@ -92,25 +94,60 @@ describe("PropertyController", () => {
             basePricePerNight: 120.0,
         }as CreatePropertyDTO
 
-        let response = await request(app).post("/propertys").send(newProperty);
+        let response = await request(app).post("/properties").send(newProperty);
 
         expect(response.status).toBe(400);
         expect(response.body.message).toBe('A capacidade máxima deve ser maior que zero.');
 
         newProperty.maxGuests = -1;
-        response = await request(app).post("/propertys").send(newProperty);
+        response = await request(app).post("/properties").send(newProperty);
 
         expect(response.status).toBe(400);
         expect(response.body.message).toBe('A capacidade máxima deve ser maior que zero.');
     });
-    it("deve retornar erro com código 400 e mensagem 'O preço base por noite é obrigatório.' ao enviar basePricePerNight ausente",async () => {
-       const response = await request(app).post("/propertys").send({
-            name:"Nome teste",
+    it.each([
+        ["ausente", {}, "O preço base por noite é obrigatório."],
+        ["nulo", { basePricePerNight: null }, "O preço base por noite é obrigatório."],
+        ["zero", { basePricePerNight: 0 }, "O preço base por noite deve ser maior que zero."],
+        ["negativo", { basePricePerNight: -1 }, "O preço base por noite deve ser maior que zero."],
+        ["texto", { basePricePerNight: "10" }, "O preço base por noite deve ser maior que zero."],
+    ])("deve rejeitar preço %s sem persistir propriedade", async (_case, price, message) => {
+        const countBefore = await dataSource.getRepository(PropertyEntity).count();
+        const response = await request(app).post("/properties").send({
+            name: "Nome teste",
             description: "Descrição teste",
-            maxGuests:3,
-        }as CreatePropertyDTO);
+            maxGuests: 3,
+            ...price,
+        });
 
         expect(response.status).toBe(400);
-        expect(response.body.message).toBe('O preço base por noite é obrigatório.');
-    })
+        expect(response.body.message).toBe(message);
+        expect(await dataSource.getRepository(PropertyEntity).count()).toBe(countBefore);
+    });
+
+    it("deve rejeitar preço infinito recebido em JSON sem persistir propriedade", async () => {
+        const countBefore = await dataSource.getRepository(PropertyEntity).count();
+        const response = await request(app)
+            .post("/properties")
+            .set("Content-Type", "application/json")
+            .send('{"name":"Nome teste","description":"Descrição teste","maxGuests":3,"basePricePerNight":1e309}');
+
+        expect(response.status).toBe(400);
+        expect(response.body.message).toBe("O preço base por noite deve ser maior que zero.");
+        expect(await dataSource.getRepository(PropertyEntity).count()).toBe(countBefore);
+    });
+
+    it("deve aceitar preço positivo abaixo de 0,1 e persistir a propriedade", async () => {
+        const response = await request(app).post("/properties").send({
+            name: "Preço baixo",
+            description: "Descrição teste",
+            maxGuests: 3,
+            basePricePerNight: 0.05,
+        });
+
+        expect(response.status).toBe(201);
+        expect(response.body.property.basePricePerNight).toBe(0.05);
+        const persisted = await propertyRepository.findById(response.body.property.id);
+        expect(persisted?.getBasePricePerNight()).toBe(0.05);
+    });
 });

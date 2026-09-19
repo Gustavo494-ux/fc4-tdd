@@ -20,8 +20,16 @@ export class PropertyService {
       throw new ValidationError('A capacidade máxima deve ser maior que zero.')
     }
 
-    if(!dto.basePricePerNight || dto.basePricePerNight < 0.1){
+    if (dto.basePricePerNight == null) {
       throw new ValidationError('O preço base por noite é obrigatório.')
+    }
+
+    if (
+      typeof dto.basePricePerNight !== 'number' ||
+      !Number.isFinite(dto.basePricePerNight) ||
+      dto.basePricePerNight <= 0
+    ) {
+      throw new ValidationError('O preço base por noite deve ser maior que zero.')
     }
 
     const property = new Property(

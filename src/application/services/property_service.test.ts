@@ -86,13 +86,57 @@ describe("PropertyService", () => {
     await expect(propertyService.createProperty(newProperty)).rejects.toThrow(new Error('A capacidade máxima deve ser maior que zero.'));
   });
 
-  it("deve lançar uma exeção com mensagem 'O preço base por noite é obrigatório.' ao criar uma property com basePricePerNight ausente.", async () => {
+  it.each([
+    ["ausente", undefined],
+    ["nulo", null],
+  ])("deve rejeitar preço %s sem salvar", async (_case, price) => {
+    const save = jest.spyOn(fakePropertyRepository, "save");
     const newProperty = {
       name: "Nome Teste",
       description: "Descrição teste",
       maxGuests: 3,
+      ...(price === undefined ? {} : { basePricePerNight: price }),
+    } as unknown as CreatePropertyDTO;
+
+    await expect(propertyService.createProperty(newProperty)).rejects.toMatchObject({
+      name: "ValidationError",
+      message: "O preço base por noite é obrigatório.",
+    });
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["zero", 0],
+    ["negativo", -1],
+    ["NaN", NaN],
+    ["infinito", Infinity],
+    ["infinito negativo", -Infinity],
+    ["texto", "10"],
+  ])("deve rejeitar preço %s sem salvar", async (_case, price) => {
+    const save = jest.spyOn(fakePropertyRepository, "save");
+    const dto = {
+      name: "Nome Teste",
+      description: "Descrição teste",
+      maxGuests: 3,
+      basePricePerNight: price,
     } as CreatePropertyDTO;
 
-    await expect(propertyService.createProperty(newProperty)).rejects.toThrow(new Error('O preço base por noite é obrigatório.'));
+    await expect(propertyService.createProperty(dto)).rejects.toMatchObject({
+      name: "ValidationError",
+      message: "O preço base por noite deve ser maior que zero.",
+    });
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("deve aceitar preço positivo abaixo de 0,1", async () => {
+    const property = await propertyService.createProperty({
+      name: "Nome Teste",
+      description: "Descrição teste",
+      maxGuests: 3,
+      basePricePerNight: 0.05,
+    });
+
+    expect(property.getBasePricePerNight()).toBe(0.05);
+    expect((await fakePropertyRepository.findById(property.getId()))?.getBasePricePerNight()).toBe(0.05);
   });
 });

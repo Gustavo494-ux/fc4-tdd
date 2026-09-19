@@ -32,6 +32,26 @@ describe("Property Entity", () => {
     }).toThrow("O número máximo de hóspedes deve ser maior que zero");
   });
 
+  it.each([
+    ["ausente", undefined],
+    ["nulo", null],
+    ["zero", 0],
+    ["negativo", -1],
+    ["NaN", NaN],
+    ["infinito", Infinity],
+    ["infinito negativo", -Infinity],
+    ["texto", "10"],
+  ])("deve rejeitar preço %s", (_case, price) => {
+    expect(() => new Property("1", "Casa", "Descrição", 4, price as number)).toThrow(
+      "O preço base por noite deve ser maior que zero."
+    );
+  });
+
+  it("deve aceitar preço positivo abaixo de 0,1", () => {
+    const property = new Property("1", "Casa", "Descrição", 4, 0.05);
+    expect(property.getBasePricePerNight()).toBe(0.05);
+  });
+
   it("deve validar o número máximo de hóspedes", () => {
     const property = new Property("1", "Casa de Campo", "Descrição", 5, 150);
 
